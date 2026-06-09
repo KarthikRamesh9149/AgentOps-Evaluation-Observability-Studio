@@ -1,0 +1,42 @@
+name: local-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATA_DIR: ../data
+      LLM_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install backend
+        run: cd backend && python -m pip install -e ".[dev]"
+      - name: Backend lint
+        run: cd backend && ruff check app tests
+      - name: Backend typecheck
+        run: cd backend && mypy app
+      - name: Backend tests
+        run: cd backend && pytest
+      - name: Install frontend
+        run: cd frontend && npm ci
+      - name: Frontend typecheck
+        run: cd frontend && npm run typecheck
+      - name: Frontend build
+        run: cd frontend && npm run build
+      - name: Seed demo and run mock evals
+        run: |
+          cd backend
+          python -m app.cli.main seed-demo
+          python -m app.cli.main run-evals
+          python -m app.cli.main apply-quality-gate
