@@ -19,13 +19,13 @@ seed-demo:
 	cd backend && python -m app.cli.main seed-demo
 
 backend-test:
-	cd backend && pytest
+	cd backend && python -m pytest
 
 backend-lint:
-	cd backend && ruff check app tests
+	cd backend && python -m ruff check app tests
 
 backend-typecheck:
-	cd backend && mypy app
+	cd backend && python -m mypy app
 
 frontend-typecheck:
 	cd frontend && npm run typecheck

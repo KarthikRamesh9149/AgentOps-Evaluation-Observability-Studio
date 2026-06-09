@@ -23,11 +23,11 @@ jobs:
       - name: Install backend
         run: cd backend && python -m pip install -e ".[dev]"
       - name: Backend lint
-        run: cd backend && ruff check app tests
+        run: cd backend && python -m ruff check app tests
       - name: Backend typecheck
-        run: cd backend && mypy app
+        run: cd backend && python -m mypy app
       - name: Backend tests
-        run: cd backend && pytest
+        run: cd backend && python -m pytest
       - name: Install frontend
         run: cd frontend && npm ci
       - name: Frontend typecheck

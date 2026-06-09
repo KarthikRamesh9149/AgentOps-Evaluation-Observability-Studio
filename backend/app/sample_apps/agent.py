@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from app.schemas.models import Span, Trace, now_iso
 
-
 TOOLS = {
     "Where is my package?": "lookup_order",
     "Can I get a refund?": "refund_policy_lookup",

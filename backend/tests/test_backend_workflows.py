@@ -7,12 +7,19 @@ from pathlib import Path
 
 import pytest
 
-from app.core.settings import Settings
 from app.evaluators.registry import evaluate_case
 from app.providers.base import MockLLMProvider, OpenAIProvider
 from app.quality_gates.service import evaluate_quality_gate
 from app.runners.engine import compare_runs, run_prompt_eval
-from app.schemas.models import DatasetCase, DatasetMeta, Project, PromptVersion, QualityGate, ReviewAnnotation, RunRequest
+from app.schemas.models import (
+    DatasetCase,
+    DatasetMeta,
+    Project,
+    PromptVersion,
+    QualityGate,
+    ReviewAnnotation,
+    RunRequest,
+)
 from app.storage.file_store import ValidationFailure, validate_id
 from app.storage.repositories import RepositoryHub
 

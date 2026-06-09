@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-06-09T23:48:17.807989+00:00",
+  "default_model": "mock-enterprise-eval",
+  "default_provider": "mock",
+  "description": "Local-first mixed prompt, RAG, agent, and JSON evaluation workspace.",
+  "metadata": {},
+  "name": "Demo AgentOps Quality Studio",
+  "project_id": "demo-agentops-quality-studio",
+  "project_type": "mixed",
+  "quality_gate_config_path": "quality_gates.yaml",
+  "tags": [
+    "demo",
+    "local-first",
+    "agentops"
+  ],
+  "updated_at": "2026-06-09T23:48:17.808001+00:00"
+}

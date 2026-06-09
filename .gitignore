@@ -9,6 +9,8 @@ node_modules/
 out/
 coverage/
 *.pyc
+*.egg-info/
+*.tsbuildinfo
 data/projects/*/runs/**
 data/projects/*/traces/**
 data/projects/*/reports/**

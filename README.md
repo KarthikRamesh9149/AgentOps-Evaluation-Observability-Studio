@@ -116,7 +116,7 @@ make frontend-build
 
 ## Intentional Exclusions
 
-No database, user accounts, payments, cloud hosting guide, external hosted observability vendor, or production infrastructure is included. The project is intentionally local-first.
+No database, user accounts, payments, external hosted observability vendor, or production infrastructure is included. The project is intentionally local-first.
 
 ## Resume Bullets
 

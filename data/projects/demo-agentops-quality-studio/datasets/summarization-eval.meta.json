@@ -1,0 +1,12 @@
+{
+  "case_count": 1,
+  "created_at": "2026-06-09T23:48:17.854325+00:00",
+  "dataset_id": "summarization-eval",
+  "description": "",
+  "metadata": {},
+  "name": "summarization_eval",
+  "tags": [
+    "demo"
+  ],
+  "updated_at": "2026-06-09T23:48:17.854350+00:00"
+}

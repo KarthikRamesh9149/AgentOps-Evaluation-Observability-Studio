@@ -1,0 +1,13 @@
+prompt_id: json-extractor
+version: 1
+name: JSON extractor
+system_prompt: Return only compact JSON.
+user_template: 'Extract structured fields as JSON: {input}'
+model: mock-enterprise-eval
+temperature: 0.2
+max_output_tokens: 700
+created_at: '2026-06-09T23:48:17.818663+00:00'
+tags:
+- json
+notes: ''
+metadata: {}

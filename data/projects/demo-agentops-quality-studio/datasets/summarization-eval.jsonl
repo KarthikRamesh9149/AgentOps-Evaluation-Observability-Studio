@@ -1,0 +1,1 @@
+{"case_id": "case-summary", "category": "general", "expected_citations": [], "expected_json_schema": null, "expected_keywords": ["refund", "shipping"], "expected_output": null, "expected_tool_calls": [], "input": "Summarize refund and shipping risk", "metadata": {"required_sections": ["Summary", "Risk"]}, "reference_answer": null, "tags": []}

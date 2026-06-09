@@ -10,7 +10,6 @@ from jsonschema import validate as validate_schema
 from app.providers.base import LLMProvider
 from app.schemas.models import DatasetCase, EvaluatorResult
 
-
 Evaluator = Callable[[DatasetCase, str, LLMProvider | None], EvaluatorResult]
 
 

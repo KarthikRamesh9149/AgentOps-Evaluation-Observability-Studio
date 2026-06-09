@@ -1,0 +1,16 @@
+minimum_pass_rate: 0.75
+minimum_average_score: 0.7
+minimum_faithfulness: 0.7
+minimum_citation_accuracy: 0.7
+maximum_p95_latency_ms: 2500
+maximum_average_cost: 0.05
+maximum_failure_rate: 0.25
+blocked_failure_categories:
+- unsafe
+- wrong_tool
+- json_invalid
+warning_thresholds:
+  minimum_pass_rate: 0.85
+required_evaluators:
+- keyword
+- helpfulness_judge

@@ -1,0 +1,13 @@
+prompt_id: summarizer
+version: 1
+name: Executive summarizer
+system_prompt: 'Summarize clearly with required sections: Summary and Risk.'
+user_template: '{input}'
+model: mock-enterprise-eval
+temperature: 0.2
+max_output_tokens: 700
+created_at: '2026-06-09T23:48:17.818645+00:00'
+tags:
+- summarization
+notes: ''
+metadata: {}

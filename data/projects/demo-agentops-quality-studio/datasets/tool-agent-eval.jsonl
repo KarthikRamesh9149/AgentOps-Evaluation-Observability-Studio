@@ -1,0 +1,1 @@
+{"case_id": "case-damaged", "category": "agent", "expected_citations": [], "expected_json_schema": null, "expected_keywords": ["support ticket"], "expected_output": null, "expected_tool_calls": ["create_support_ticket"], "input": "My order arrived damaged.", "metadata": {"actual_tool_calls": ["create_support_ticket"]}, "reference_answer": null, "tags": []}
