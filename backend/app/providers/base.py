@@ -113,7 +113,7 @@ class OpenAIProvider(LLMProvider):
         )
 
     def judge(self, criterion: str, input_text: str, output_text: str, reference: str | None = None) -> dict[str, object]:
-        if not self.api_key:
+        if not self.api_key or os.getenv("OPENAI_ENABLE_JUDGE", "false").lower() not in {"1", "true", "yes"}:
             return MockLLMProvider().judge(criterion, input_text, output_text, reference)
         prompt = (
             "Return compact JSON with score number 0-1, passed boolean, explanation under 20 words. "

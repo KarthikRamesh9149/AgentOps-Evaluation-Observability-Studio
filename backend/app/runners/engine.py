@@ -15,6 +15,8 @@ def run_prompt_eval(repo: RepositoryHub, project_id: str, request: RunRequest, m
     project = repo.get_project(project_id)
     prompt = repo.get_prompt_version(project_id, request.prompt_id, request.prompt_version)
     cases = repo.list_cases(project_id, request.dataset_id)
+    if request.max_cases is not None:
+        cases = cases[: max(1, request.max_cases)]
     provider = provider_factory(request.provider, latency_ms=mock_latency_ms)
     run = EvalRun(
         project_id=project_id,

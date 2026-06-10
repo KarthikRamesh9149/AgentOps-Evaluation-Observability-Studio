@@ -24,7 +24,19 @@ def seed_demo(repo: RepositoryHub, data_dir: Path) -> None:
     )
     repo.create_project(project)
     prompts = [
-        PromptVersion(prompt_id="support-agent", name="Customer support agent", system_prompt="Answer with policy-grounded support guidance and cite policy files.", user_template="{input}", tags=["support"]),
+        PromptVersion(
+            prompt_id="support-agent",
+            name="Customer support agent",
+            system_prompt=(
+                "Answer in one concise paragraph. For package or shipping questions, mention "
+                "shipping status and include exact text 'Citation: shipping_policy.md'. For refund "
+                "questions, mention refund eligibility and include exact text 'Citation: refund_policy.md'. "
+                "For damaged orders, offer to create a support ticket."
+            ),
+            user_template="{input}",
+            max_output_tokens=120,
+            tags=["support"],
+        ),
         PromptVersion(prompt_id="summarizer", name="Executive summarizer", system_prompt="Summarize clearly with required sections: Summary and Risk.", user_template="{input}", tags=["summarization"]),
         PromptVersion(prompt_id="json-extractor", name="JSON extractor", system_prompt="Return only compact JSON.", user_template="Extract structured fields as JSON: {input}", tags=["json"]),
     ]
@@ -72,6 +84,12 @@ def main() -> int:
     run_parser.add_argument("--dataset-id", default="prompt-regression-eval")
     run_parser.add_argument("--provider", default="mock")
     run_parser.add_argument("--model", default="mock-enterprise-eval")
+    run_parser.add_argument("--max-cases", type=int)
+    run_parser.add_argument(
+        "--evaluators",
+        default="keyword,json_validity,citation_accuracy,faithfulness,tool_selection,helpfulness_judge",
+        help="Comma-separated evaluator names. Use rule-only evaluators to reduce OpenAI token use.",
+    )
     gate_parser = sub.add_parser("apply-quality-gate")
     gate_parser.add_argument("--project-id", default=DEMO_PROJECT_ID)
     gate_parser.add_argument("--run-id")
@@ -89,7 +107,20 @@ def main() -> int:
         seed_demo(repo, settings.data_dir)
         return 0
     if args.cmd == "run-evals":
-        run = run_prompt_eval(repo, args.project_id, RunRequest(prompt_id=args.prompt_id, prompt_version=args.prompt_version, dataset_id=args.dataset_id, provider=args.provider, model=args.model), settings.mock_provider_latency_ms)
+        run = run_prompt_eval(
+            repo,
+            args.project_id,
+            RunRequest(
+                prompt_id=args.prompt_id,
+                prompt_version=args.prompt_version,
+                dataset_id=args.dataset_id,
+                provider=args.provider,
+                model=args.model,
+                max_cases=args.max_cases,
+                evaluators=[item.strip() for item in args.evaluators.split(",") if item.strip()],
+            ),
+            settings.mock_provider_latency_ms,
+        )
         print(f"Run {run.run_id}: pass_rate={run.pass_rate:.2%} gate={run.quality_gate_status}")
         return 0 if run.quality_gate_status in {"pass", "warn"} else 1
     if args.cmd == "apply-quality-gate":

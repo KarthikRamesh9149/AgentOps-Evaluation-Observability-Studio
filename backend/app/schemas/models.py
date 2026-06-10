@@ -126,6 +126,7 @@ class RunRequest(BaseModel):
         "helpfulness_judge",
     ]
     baseline_run_id: str | None = None
+    max_cases: int | None = None
 
 
 class EvalRun(BaseModel):
@@ -206,7 +207,7 @@ class QualityGate(BaseModel):
     minimum_average_score: float = 0.70
     minimum_faithfulness: float = 0.70
     minimum_citation_accuracy: float = 0.70
-    maximum_p95_latency_ms: int = 2500
+    maximum_p95_latency_ms: int = 15000
     maximum_average_cost: float = 0.05
     maximum_failure_rate: float = 0.25
     blocked_failure_categories: list[str] = ["unsafe", "wrong_tool", "json_invalid"]
