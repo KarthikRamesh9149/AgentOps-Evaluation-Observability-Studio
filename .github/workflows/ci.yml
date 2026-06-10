@@ -30,10 +30,19 @@ jobs:
         run: cd backend && python -m pytest
       - name: Install frontend
         run: cd frontend && npm ci
+      - name: Install Playwright browser
+        run: cd frontend && npx playwright install --with-deps chromium
       - name: Frontend typecheck
         run: cd frontend && npm run typecheck
       - name: Frontend build
         run: cd frontend && npm run build
+      - name: Frontend e2e
+        run: |
+          cd backend
+          python -m app.cli.main seed-demo
+          python -m app.cli.main run-evals
+          cd ../frontend
+          npm run e2e
       - name: Seed demo and run mock evals
         run: |
           cd backend

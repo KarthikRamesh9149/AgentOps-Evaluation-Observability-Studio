@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { MetricCard } from "@/components/Cards";
 import { ErrorState, LoadingState } from "@/components/State";
 import { client } from "@/lib/api";
@@ -27,16 +27,14 @@ export default function ObservabilityPage() {
         <MetricCard label="p95 latency" value={`${Math.round(Number(summary.p95_latency_ms ?? 0))} ms`} />
         <MetricCard label="Total estimated cost" value={`$${Number(summary.total_estimated_cost ?? 0).toFixed(6)}`} />
       </div>
-      <div className="h-80 rounded-md border border-line bg-white p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={latency}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="value" fill="#2563eb" />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="overflow-x-auto rounded-md border border-line bg-white p-4">
+        <BarChart width={900} height={300} data={latency}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="value" fill="#2563eb" />
+        </BarChart>
       </div>
     </div>
   );

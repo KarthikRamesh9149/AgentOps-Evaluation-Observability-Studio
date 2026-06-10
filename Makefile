@@ -33,6 +33,9 @@ frontend-typecheck:
 frontend-build:
 	cd frontend && npm run build
 
+frontend-e2e:
+	cd frontend && npm run e2e
+
 evals:
 	cd backend && python -m app.cli.main run-evals --project-id demo-agentops-quality-studio --prompt-id support-agent --dataset-id prompt-regression-eval
 
@@ -50,4 +53,5 @@ verify:
 	$(MAKE) frontend-build
 	$(MAKE) seed-demo
 	$(MAKE) evals
+	$(MAKE) frontend-e2e
 	$(MAKE) quality-gate

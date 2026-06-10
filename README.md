@@ -1,6 +1,10 @@
 # AgentOps Evaluation & Observability Studio
 
+[![local-ci](https://github.com/KarthikRamesh9149/AgentOps-Evaluation-Observability-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/KarthikRamesh9149/AgentOps-Evaluation-Observability-Studio/actions/workflows/ci.yml)
+
 Local-first enterprise AI quality platform for prompt evaluation, RAG evaluation, tool-agent evaluation, trace observability, quality gates, human review, and exportable reports.
+
+![Demo walkthrough](docs/assets/demo-walkthrough.gif)
 
 ## Why This Matters
 
@@ -21,6 +25,17 @@ This project demonstrates practical AI engineering and LLMOps work: prompt versi
 - Markdown and HTML report export.
 - CLI commands for demo seeding, eval runs, quality gates, reports, and comparisons.
 - GitHub Actions workflow that uses mock mode and requires no secrets.
+- Playwright desktop and mobile e2e coverage for the core dashboard, run detail, trace, observability, reports, and settings flows.
+
+## Product Screenshots
+
+| Dashboard | Run Detail |
+|---|---|
+| ![Dashboard](docs/assets/home-dashboard.png) | ![Run detail](docs/assets/run-detail.png) |
+
+| Trace Waterfall | Observability |
+|---|---|
+| ![Trace waterfall](docs/assets/trace-waterfall.png) | ![Observability](docs/assets/observability.png) |
 
 ## Local Architecture
 
@@ -56,6 +71,15 @@ The backend validates IDs and blocks path traversal before file access.
 ## OpenAI Token Discipline
 
 Mock mode is default and enough for the full demo, tests, and CI. OpenAI mode is opt-in through `.env`; defaults point to smaller models, judge responses are compact JSON, and tests never call external APIs.
+
+Verified real-provider smoke command:
+
+```bash
+cd backend
+python -m app.cli.main run-evals --project-id demo-agentops-quality-studio --prompt-id support-agent --dataset-id prompt-regression-eval --provider openai --model gpt-4.1-nano --max-cases 1 --evaluators keyword,citation_accuracy,length
+```
+
+The verified OpenAI smoke run passed with a concise answer containing `Citation: shipping_policy.md`. Keep `OPENAI_ENABLE_JUDGE=false` unless you explicitly want extra judge calls.
 
 ## Local Setup
 
@@ -100,7 +124,10 @@ make backend-typecheck
 make backend-test
 make frontend-typecheck
 make frontend-build
+make frontend-e2e
 ```
+
+Current local verification includes backend lint, mypy, pytest, frontend typecheck, frontend build, Playwright desktop/mobile e2e, mock evals, quality gates, report generation, and `npm audit --omit=dev`.
 
 ## Documentation
 

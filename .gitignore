@@ -8,6 +8,9 @@ node_modules/
 .next/
 out/
 coverage/
+output/
+frontend/test-results/
+frontend/playwright-report/
 *.pyc
 *.egg-info/
 *.tsbuildinfo
