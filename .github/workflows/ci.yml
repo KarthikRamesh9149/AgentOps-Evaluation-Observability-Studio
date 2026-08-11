@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      APP_ENV: local
+      ALLOW_INSECURE_LOCAL_DEMO: "true"
       DATA_DIR: ../data
       LLM_PROVIDER: mock
     steps:
