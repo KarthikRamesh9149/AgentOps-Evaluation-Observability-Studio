@@ -38,7 +38,7 @@ async def require_api_auth(request: Request, call_next):
     is_authorized = (
         request_settings.insecure_local_demo_enabled
         or (
-            bool(expected_token)
+            expected_token is not None
             and bool(separator)
             and scheme.lower() == "bearer"
             and hmac.compare_digest(supplied_token, expected_token)
