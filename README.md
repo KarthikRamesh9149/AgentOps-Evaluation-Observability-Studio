@@ -89,6 +89,10 @@ make frontend-install
 make seed-demo
 ```
 
+## API Access
+
+Non-health API routes require a bearer token by default. Set a unique `API_AUTH_TOKEN` of at least 32 characters in a local `.env` and send it as `Authorization: Bearer <token>`; non-local startup rejects missing or short tokens. The browser demo can remain offline and unauthenticated only with the explicit `APP_ENV=local` and `ALLOW_INSECURE_LOCAL_DEMO=true` combination; that flag is rejected outside local development.
+
 Run the backend:
 
 ```bash

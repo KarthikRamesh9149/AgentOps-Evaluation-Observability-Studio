@@ -2,6 +2,13 @@
 
 Base URL: `http://127.0.0.1:8000`
 
+## Authentication
+
+Every endpoint except `GET /health` requires `Authorization: Bearer <API_AUTH_TOKEN>`.
+Set a unique high-entropy `API_AUTH_TOKEN` of at least 32 characters outside source control before binding the backend to any network interface. Startup rejects a missing token in non-local environments, short configured tokens, and `ALLOW_INSECURE_LOCAL_DEMO=true` outside `APP_ENV=local`. For the offline localhost demo only, `APP_ENV=local` together with `ALLOW_INSECURE_LOCAL_DEMO=true` explicitly disables request authentication; it is disabled by default.
+
+Authentication failures intentionally return only `401 Unauthorized` and do not reveal whether a token is configured or valid.
+
 ## Health
 
 - `GET /health`

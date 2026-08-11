@@ -33,8 +33,9 @@ def repo(settings: Settings = Depends(get_settings)) -> RepositoryHub:
 
 
 @router.get("/health")
-def health(settings: Settings = Depends(get_settings)) -> dict[str, object]:
-    return {"status": "ok", "app_env": settings.app_env, "data_dir": str(settings.data_dir), "provider": settings.llm_provider}
+def health() -> dict[str, str]:
+    """Unauthenticated liveness probe; intentionally excludes configuration details."""
+    return {"status": "ok"}
 
 
 @router.get("/projects")

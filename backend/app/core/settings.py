@@ -37,6 +37,14 @@ def _data_dir() -> Path:
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "local")
+    # Set a high-entropy value outside source control before exposing the API.
+    api_auth_token: str | None = os.getenv("API_AUTH_TOKEN") or None
+    # This is deliberately opt-in and only honored for a local demo process.
+    allow_insecure_local_demo: bool = os.getenv("ALLOW_INSECURE_LOCAL_DEMO", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     data_dir: Path = _data_dir()
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock")
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY") or None
@@ -58,6 +66,19 @@ class Settings:
         if origin.strip()
     )
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+
+    def __post_init__(self) -> None:
+        app_env = self.app_env.lower()
+        if self.api_auth_token is not None and len(self.api_auth_token) < 32:
+            raise ValueError("API_AUTH_TOKEN must contain at least 32 characters")
+        if self.allow_insecure_local_demo and app_env != "local":
+            raise ValueError("ALLOW_INSECURE_LOCAL_DEMO is only permitted when APP_ENV=local")
+        if app_env != "local" and self.api_auth_token is None:
+            raise ValueError("API_AUTH_TOKEN is required when APP_ENV is not local")
+
+    @property
+    def insecure_local_demo_enabled(self) -> bool:
+        return self.app_env.lower() == "local" and self.allow_insecure_local_demo
 
 
 def get_settings() -> Settings:

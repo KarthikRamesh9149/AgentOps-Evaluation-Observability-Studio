@@ -13,7 +13,7 @@ from app.storage.repositories import RepositoryHub
 
 @pytest.fixture()
 def client(tmp_path: Path) -> TestClient:
-    settings = Settings(data_dir=tmp_path)
+    settings = Settings(data_dir=tmp_path, api_auth_token="test-api-auth-token-for-focused-tests-001")
 
     def override_settings() -> Settings:
         return settings
@@ -24,6 +24,7 @@ def client(tmp_path: Path) -> TestClient:
     app.dependency_overrides[routes.get_settings] = override_settings
     app.dependency_overrides[routes.repo] = override_repo
     with TestClient(app) as test_client:
+        test_client.headers["Authorization"] = "Bearer test-api-auth-token-for-focused-tests-001"
         yield test_client
     app.dependency_overrides.clear()
 
@@ -89,6 +90,62 @@ def test_project_prompt_dataset_endpoints(client: TestClient) -> None:
     )
     assert added.status_code == 200
     assert len(client.get("/projects/api-demo/datasets/cases/cases").json()) == 2
+
+
+def test_api_authentication_is_fail_closed_and_health_is_sanitized(client: TestClient) -> None:
+    client.headers.pop("Authorization")
+    rejected = client.get("/projects")
+    assert rejected.status_code == 401
+    assert rejected.json() == {"detail": "Unauthorized"}
+    assert rejected.headers["www-authenticate"] == "Bearer"
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/settings/providers").status_code == 401
+    assert client.post("/projects", json={}).status_code == 401
+
+    invalid = client.get("/projects", headers={"Authorization": "Bearer wrong-token"})
+    assert invalid.status_code == 401
+
+
+def test_explicit_local_demo_mode_can_bypass_authentication(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path, allow_insecure_local_demo=True)
+
+    def override_settings() -> Settings:
+        return settings
+
+    app.dependency_overrides[routes.get_settings] = override_settings
+    try:
+        with TestClient(app) as demo_client:
+            assert demo_client.get("/projects").status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_local_without_a_token_remains_fail_closed(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path)
+
+    def override_settings() -> Settings:
+        return settings
+
+    app.dependency_overrides[routes.get_settings] = override_settings
+    try:
+        with TestClient(app) as local_client:
+            assert local_client.get("/projects").status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_invalid_authentication_configuration_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="at least 32 characters"):
+        Settings(data_dir=tmp_path, api_auth_token="too-short")
+    with pytest.raises(ValueError, match="required when APP_ENV is not local"):
+        Settings(data_dir=tmp_path, app_env="production")
+    with pytest.raises(ValueError, match="only permitted when APP_ENV=local"):
+        Settings(
+            data_dir=tmp_path,
+            app_env="production",
+            api_auth_token="production-test-api-auth-token-for-focused-tests-001",
+            allow_insecure_local_demo=True,
+        )
 
 
 def test_run_report_trace_observability_quality_and_review_endpoints(client: TestClient) -> None:
