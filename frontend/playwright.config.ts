@@ -1,4 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { createHash } from "node:crypto";
+
+const e2eToken = "operator.e2e-only-agentops-token-secret";
+const e2eDigest = createHash("sha256").update(e2eToken.split(".", 2)[1]).digest("hex");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -16,7 +20,8 @@ export default defineConfig({
       url: "http://127.0.0.1:8765/health",
       reuseExistingServer: true,
       env: {
-        CORS_ORIGINS: "http://127.0.0.1:3765,http://localhost:3765"
+        CORS_ORIGINS: "http://127.0.0.1:3765,http://localhost:3765",
+        API_TOKENS: `operator:operator:${e2eDigest}`
       },
       timeout: 30_000
     },
@@ -25,7 +30,8 @@ export default defineConfig({
       url: "http://127.0.0.1:3765",
       reuseExistingServer: true,
       env: {
-        NEXT_PUBLIC_API_BASE: "http://127.0.0.1:8765"
+        AGENTOPS_API_BASE_INTERNAL: "http://127.0.0.1:8765",
+        AGENTOPS_API_TOKEN: e2eToken
       },
       timeout: 60_000
     }

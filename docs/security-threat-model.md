@@ -27,6 +27,10 @@ AgentOps Evaluation & Observability Studio is a local-first FastAPI and Next.js 
 
 ## Required Invariants
 
+- Authenticate every route except the sanitized liveness probe.
+- Store only token digests, enforce scoped roles, and support overlapping records for rotation.
+- Keep backend bearer credentials in the Next.js server process, never browser storage or public build variables.
+- Reject oversized requests and rate-limit identities before route execution.
 - Reject path traversal and unsafe file names before any file read/write.
 - Never expose environment secrets through API responses.
 - Do not commit `.env` or real keys.
@@ -36,9 +40,16 @@ AgentOps Evaluation & Observability Studio is a local-first FastAPI and Next.js 
 
 ## High-Impact Failure Modes
 
+- Missing authentication or an authorization policy that lets read-only tokens mutate artifacts.
+- Token disclosure through browser bundles, environment responses, traces, or logs.
+- Resource exhaustion through unbounded bodies or request floods.
 - Path traversal causing reads or writes outside `DATA_DIR`.
 - Secret leakage through settings, traces, reports, logs, or frontend rendering.
 - Unexpected external API calls in tests or default local workflows.
 - Corrupted local artifacts breaking project load paths without useful errors.
 - Stored HTML/script injection through report rendering or output display.
 - Quality gate bypass due to incorrect metric aggregation or failed category handling.
+
+## Operational Residual Risks
+
+The token model represents service identities rather than individual humans and does not provide SSO, MFA, or lifecycle automation. The in-memory limiter is process-local. File storage assumes a trusted single-writer deployment. Any shared or internet-facing deployment should add TLS, an identity-aware proxy or IdP, a distributed limiter, centralized audit logs, and database/object-store controls.

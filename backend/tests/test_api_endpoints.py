@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api import routes
+from app.core.auth import token_digest
 from app.core.settings import Settings
 from app.main import app
 from app.storage.repositories import RepositoryHub
@@ -13,7 +14,8 @@ from app.storage.repositories import RepositoryHub
 
 @pytest.fixture()
 def client(tmp_path: Path) -> TestClient:
-    settings = Settings(data_dir=tmp_path, api_auth_token="test-api-auth-token-for-focused-tests-001")
+    secret = "test-api-auth-token-for-focused-tests-001"
+    settings = Settings(data_dir=tmp_path, api_tokens=f"test-operator:operator:{token_digest(secret)}")
 
     def override_settings() -> Settings:
         return settings
@@ -24,7 +26,7 @@ def client(tmp_path: Path) -> TestClient:
     app.dependency_overrides[routes.get_settings] = override_settings
     app.dependency_overrides[routes.repo] = override_repo
     with TestClient(app) as test_client:
-        test_client.headers["Authorization"] = "Bearer test-api-auth-token-for-focused-tests-001"
+        test_client.headers["Authorization"] = f"Bearer test-operator.{secret}"
         yield test_client
     app.dependency_overrides.clear()
 
@@ -106,6 +108,20 @@ def test_api_authentication_is_fail_closed_and_health_is_sanitized(client: TestC
     assert invalid.status_code == 401
 
 
+def test_every_documented_api_route_is_fail_closed_without_authentication(client: TestClient) -> None:
+    client.headers.pop("Authorization")
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if not path.startswith("/") or path == "/health":
+            continue
+        concrete_path = path
+        for parameter in getattr(route, "param_convertors", {}):
+            concrete_path = concrete_path.replace("{" + parameter + "}", "1" if parameter == "version" else "test")
+        for method in set(getattr(route, "methods", set())) - {"HEAD", "OPTIONS"}:
+            response = client.request(method, concrete_path)
+            assert response.status_code == 401, f"{method} {path} was not protected"
+
+
 def test_explicit_local_demo_mode_can_bypass_authentication(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path, allow_insecure_local_demo=True)
 
@@ -135,17 +151,69 @@ def test_local_without_a_token_remains_fail_closed(tmp_path: Path) -> None:
 
 
 def test_invalid_authentication_configuration_is_rejected(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="at least 32 characters"):
-        Settings(data_dir=tmp_path, api_auth_token="too-short")
+    with pytest.raises(ValueError, match="token_id:role:sha256"):
+        Settings(data_dir=tmp_path, api_tokens="too-short")
     with pytest.raises(ValueError, match="required when APP_ENV is not local"):
         Settings(data_dir=tmp_path, app_env="production")
     with pytest.raises(ValueError, match="only permitted when APP_ENV=local"):
         Settings(
             data_dir=tmp_path,
             app_env="production",
-            api_auth_token="production-test-api-auth-token-for-focused-tests-001",
+            api_tokens=f"admin:admin:{token_digest('production-test-token-secret-value')}",
             allow_insecure_local_demo=True,
         )
+
+
+def test_scoped_tokens_enforce_roles_and_constant_format(tmp_path: Path) -> None:
+    viewer_secret = "viewer-test-secret-value-with-high-entropy"
+    reviewer_secret = "reviewer-test-secret-value-with-high-entropy"
+    settings = Settings(
+        data_dir=tmp_path,
+        api_tokens=(
+            f"viewer:viewer:{token_digest(viewer_secret)},"
+            f"reviewer:reviewer:{token_digest(reviewer_secret)}"
+        ),
+    )
+
+    def override_settings() -> Settings:
+        return settings
+
+    app.dependency_overrides[routes.get_settings] = override_settings
+    try:
+        with TestClient(app) as scoped:
+            assert scoped.get("/projects", headers={"Authorization": f"Bearer viewer.{viewer_secret}"}).status_code == 200
+            assert scoped.post("/projects", headers={"Authorization": f"Bearer viewer.{viewer_secret}"}, json={}).status_code == 403
+            assert scoped.post("/projects/x/reviews", headers={"Authorization": f"Bearer reviewer.{reviewer_secret}"}, json={}).status_code != 403
+            assert scoped.get("/projects", headers={"Authorization": "Bearer unknown.anything"}).status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_request_size_and_rate_limits_fail_closed(tmp_path: Path) -> None:
+    secret = "bounded-test-secret-value-with-high-entropy"
+    settings = Settings(
+        data_dir=tmp_path,
+        api_tokens=f"bounded:operator:{token_digest(secret)}",
+        max_request_bytes=1024,
+        rate_limit_requests=2,
+        rate_limit_window_seconds=60,
+    )
+
+    def override_settings() -> Settings:
+        return settings
+
+    app.dependency_overrides[routes.get_settings] = override_settings
+    headers = {"Authorization": f"Bearer bounded.{secret}"}
+    try:
+        with TestClient(app) as bounded:
+            assert bounded.post("/projects", headers=headers, content=b"x" * 1025).status_code == 413
+            assert bounded.get("/projects", headers=headers).status_code == 200
+            assert bounded.get("/projects", headers=headers).status_code == 200
+            limited = bounded.get("/projects", headers=headers)
+            assert limited.status_code == 429
+            assert limited.headers["retry-after"] == "60"
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_run_report_trace_observability_quality_and_review_endpoints(client: TestClient) -> None:

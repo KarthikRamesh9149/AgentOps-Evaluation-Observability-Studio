@@ -37,8 +37,8 @@ def _data_dir() -> Path:
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "local")
-    # Set a high-entropy value outside source control before exposing the API.
-    api_auth_token: str | None = os.getenv("API_AUTH_TOKEN") or None
+    # Comma-separated token_id:role:sha256 records. Only hashes are configured.
+    api_tokens: str = os.getenv("API_TOKENS", "")
     # This is deliberately opt-in and only honored for a local demo process.
     allow_insecure_local_demo: bool = os.getenv("ALLOW_INSECURE_LOCAL_DEMO", "false").lower() in {
         "1",
@@ -66,19 +66,33 @@ class Settings:
         if origin.strip()
     )
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    max_request_bytes: int = int(os.getenv("MAX_REQUEST_BYTES", "1048576"))
+    rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
+    rate_limit_window_seconds: int = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 
     def __post_init__(self) -> None:
         app_env = self.app_env.lower()
-        if self.api_auth_token is not None and len(self.api_auth_token) < 32:
-            raise ValueError("API_AUTH_TOKEN must contain at least 32 characters")
+        from app.core.auth import parse_token_registry
+
+        parse_token_registry(self.api_tokens)
         if self.allow_insecure_local_demo and app_env != "local":
             raise ValueError("ALLOW_INSECURE_LOCAL_DEMO is only permitted when APP_ENV=local")
-        if app_env != "local" and self.api_auth_token is None:
-            raise ValueError("API_AUTH_TOKEN is required when APP_ENV is not local")
+        if app_env != "local" and not self.api_tokens:
+            raise ValueError("API_TOKENS is required when APP_ENV is not local")
+        if not 1024 <= self.max_request_bytes <= 10 * 1024 * 1024:
+            raise ValueError("MAX_REQUEST_BYTES must be between 1024 and 10485760")
+        if self.rate_limit_requests < 1 or self.rate_limit_window_seconds < 1:
+            raise ValueError("Rate-limit values must be positive")
 
     @property
     def insecure_local_demo_enabled(self) -> bool:
         return self.app_env.lower() == "local" and self.allow_insecure_local_demo
+
+    @property
+    def token_registry(self) -> dict[str, tuple[str, str]]:
+        from app.core.auth import parse_token_registry
+
+        return parse_token_registry(self.api_tokens)
 
 
 def get_settings() -> Settings:

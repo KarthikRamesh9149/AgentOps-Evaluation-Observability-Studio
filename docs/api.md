@@ -1,61 +1,11 @@
-# API
+# API and authentication
 
-Base URL: `http://127.0.0.1:8000`
+`GET /health` is the only unauthenticated endpoint. Application routes and generated API documentation fail closed behind bearer authentication.
 
-## Authentication
+Configure comma-separated `API_TOKENS` records in the form `token_id:role:sha256_digest`; never configure plaintext secrets. A client sends `Authorization: Bearer token_id.secret`. Roles are `viewer`, `reviewer`, `operator`, and `admin`: reads are available to every role, review writes to reviewer/operator/admin, general writes to operator/admin, and deletes to admin only.
 
-Every endpoint except `GET /health` requires `Authorization: Bearer <API_AUTH_TOKEN>`.
-Set a unique high-entropy `API_AUTH_TOKEN` of at least 32 characters outside source control before binding the backend to any network interface. Startup rejects a missing token in non-local environments, short configured tokens, and `ALLOW_INSECURE_LOCAL_DEMO=true` outside `APP_ENV=local`. For the offline localhost demo only, `APP_ENV=local` together with `ALLOW_INSECURE_LOCAL_DEMO=true` explicitly disables request authentication; it is disabled by default.
+The Next.js UI uses its same-origin `/api/backend/*` proxy. Set `AGENTOPS_API_BASE_INTERNAL` and `AGENTOPS_API_TOKEN` only in the frontend server environment. Never expose a token through a `NEXT_PUBLIC_*` variable.
 
-Authentication failures intentionally return only `401 Unauthorized` and do not reveal whether a token is configured or valid.
+Every request is subject to `MAX_REQUEST_BYTES`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS`. Authentication errors are intentionally generic. `ALLOW_INSECURE_LOCAL_DEMO=true` bypasses authentication only with `APP_ENV=local`; it is an explicit localhost demo mode, not a deployment setting.
 
-## Health
-
-- `GET /health`
-
-## Projects
-
-- `GET /projects`
-- `POST /projects`
-- `GET /projects/{project_id}`
-- `PATCH /projects/{project_id}`
-- `DELETE /projects/{project_id}`
-
-## Prompts
-
-- `GET /projects/{project_id}/prompts`
-- `POST /projects/{project_id}/prompts`
-- `GET /projects/{project_id}/prompts/{prompt_id}`
-- `POST /projects/{project_id}/prompts/{prompt_id}/versions`
-- `GET /projects/{project_id}/prompts/{prompt_id}/versions`
-- `GET /projects/{project_id}/prompts/{prompt_id}/versions/{version}`
-
-## Datasets
-
-- `GET /projects/{project_id}/datasets`
-- `POST /projects/{project_id}/datasets`
-- `POST /projects/{project_id}/datasets/import-jsonl`
-- `GET /projects/{project_id}/datasets/{dataset_id}`
-- `GET /projects/{project_id}/datasets/{dataset_id}/cases`
-- `POST /projects/{project_id}/datasets/{dataset_id}/cases`
-- `DELETE /projects/{project_id}/datasets/{dataset_id}`
-
-## Eval Runs
-
-- `POST /projects/{project_id}/runs`
-- `GET /projects/{project_id}/runs`
-- `GET /projects/{project_id}/runs/{run_id}`
-- `GET /projects/{project_id}/runs/{run_id}/results`
-- `GET /projects/{project_id}/runs/{run_id}/metrics`
-- `GET /projects/{project_id}/runs/{run_id}/report`
-- `POST /projects/{project_id}/runs/{run_id}/apply-quality-gate`
-
-## Comparisons
-
-- `POST /projects/{project_id}/compare-runs`
-- `POST /projects/{project_id}/compare-prompts`
-- `POST /projects/{project_id}/compare-models`
-
-## Reports, Samples, Traces, Observability, Review, Gates, Settings
-
-The backend implements report export/list/detail, local RAG and agent sample runs, trace list/detail/spans, observability summary/latency/cost/failure/evaluator endpoints, review CRUD, quality gate read/write/evaluate, and provider/evaluator settings endpoints.
+Interactive OpenAPI documentation is available at `/docs` after authentication. Route groups cover projects, prompts, datasets, runs/results/metrics, reports, sample apps, traces/spans, observability, reviews, quality gates, and provider/evaluator settings.
