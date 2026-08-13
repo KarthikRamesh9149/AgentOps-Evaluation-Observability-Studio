@@ -2,110 +2,143 @@
 
 [![CI](https://github.com/KarthikRamesh9149/AgentOps-Evaluation-Observability-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/KarthikRamesh9149/AgentOps-Evaluation-Observability-Studio/actions/workflows/ci.yml)
 
-A local-first quality workbench for prompts, RAG systems, and tool-using agents. It turns datasets into reproducible runs, evaluator scores, traces, quality decisions, human reviews, and exportable reports without requiring a hosted observability vendor.
+**A local quality-control loop for AI systems.** Turn a versioned prompt and dataset into a reproducible evaluation run, inspect the traces behind failures, make a release decision with a quality gate, and retain a reviewable report—all without making a hosted observability platform a prerequisite.
 
-![Demo walkthrough](docs/assets/demo-walkthrough.gif)
+![AgentOps walkthrough: evaluate, investigate, compare, and report](docs/assets/demo-walkthrough.gif)
 
-## Capabilities
+> Built for evaluating prompts, RAG flows, and tool-using agents locally. It is not a hosted multi-tenant observability service or a production deployment blueprint.
 
-- FastAPI API and a Next.js TypeScript dashboard.
-- Versioned YAML prompts and JSONL datasets stored as inspectable local artifacts.
-- Deterministic mock inference and evaluators for offline development and CI.
-- Optional OpenAI inference with explicit provider selection and output caps.
-- RAG citation/faithfulness, tool-call, regression, latency, cost, and failure metrics.
-- Trace/span waterfalls, run comparison, quality gates, reviewer annotations, and Markdown/HTML reports.
-- Hashed, role-scoped API tokens; no plaintext token is stored in application configuration.
-- A server-side frontend proxy that keeps backend credentials out of browser JavaScript.
-- Request-body ceilings, per-token rate limits, constant-time digest verification, and fail-closed production settings.
+## Why this product exists
 
-This repository is intentionally local-first. It is not a hosted, multi-tenant SaaS and does not include an external IdP, database, distributed workers, or production infrastructure.
+Model changes are easy to ship and hard to explain. A pass rate without the input, trace, prompt version, and reviewer decision behind it is not a useful engineering artifact. AgentOps makes that evidence loop concrete:
+
+```mermaid
+flowchart LR
+  A[Version a prompt<br/>and dataset] --> B[Run an evaluation]
+  B --> C[Score cases and<br/>write traces]
+  C --> D[Investigate failures<br/>and compare runs]
+  D --> E[Apply quality gate<br/>and add review]
+  E --> F[Export Markdown<br/>and HTML evidence]
+```
+
+### Who it is for
+
+| Persona | Job to be done | What the workbench provides |
+| --- | --- | --- |
+| AI platform engineer | Standardize how teams evaluate an AI change before integration. | Versioned prompt/dataset artifacts, deterministic runs, configurable gates, and portable reports. |
+| Forward-deployed engineer | Diagnose a customer-specific RAG or agent regression with an auditable local workflow. | Case-level results, trace waterfalls, failure views, review annotations, and local-file portability. |
+| AI product / quality lead | Decide whether a change is acceptable—and explain why. | Aggregate metrics, failed-case drill-down, run comparisons, gate decisions, and human review records. |
+
+## The product loop
+
+1. **Define the contract.** Create or import a project’s YAML prompt versions and JSONL evaluation cases.
+2. **Run with a known provider.** Use the deterministic mock provider for offline development and CI, or explicitly select OpenAI for an experiment.
+3. **Inspect what happened.** Open run details for score, latency, estimated cost, and failed cases; follow each case into its trace and spans.
+4. **Find the regression.** Compare runs, prompt versions, or models; inspect failure categories such as citation, tool-call, and JSON-output issues.
+5. **Decide and preserve evidence.** Apply the project quality gate, record a reviewer annotation, and export Markdown or HTML reporting artifacts.
+
+<p align="center">
+  <img src="docs/assets/run-detail.png" alt="Run detail with evaluation metrics and results" width="48%" />
+  <img src="docs/assets/trace-waterfall.png" alt="Trace waterfall for a single evaluation case" width="48%" />
+</p>
+
+## Differentiated capabilities
+
+- **Evaluation evidence, not a single dashboard number.** The runner links prompt version, dataset, per-case result, evaluator score, trace/span data, gate decision, and report artifact.
+- **AI-native coverage.** Built-in flows cover RAG citation and faithfulness, tool calls, regression comparisons, JSON-output validity, latency, estimated cost, and failure analysis.
+- **Inspectability by design.** Projects and generated artifacts are readable local YAML, JSONL, JSON, Markdown, and HTML beneath `data/projects/{project_id}/`.
+- **A pragmatic provider seam.** Mock inference is deterministic and network-free; OpenAI is opt-in, with explicit output limits and optional judge evaluation.
+- **Human judgment remains first-class.** Reviewers can annotate evidence and quality gates express policy; evaluator scores alone do not automatically promote a change.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Browser["Browser"] --> UI["Next.js UI + server proxy"]
-  UI -->|"server-only scoped token"| API["FastAPI API"]
-  API --> Auth["Hash verification + RBAC + limits"]
+  Browser["Next.js dashboard"] --> Proxy["Same-origin server proxy"]
+  Proxy --> API["FastAPI API"]
+  API --> Auth["Scoped token checks<br/>and route roles"]
   API --> Runner["Evaluation runner"]
-  Runner --> Provider["Mock or OpenAI"]
+  Runner --> Provider["Mock or OpenAI provider"]
   Runner --> Evaluators["Rule and judge evaluators"]
-  Runner --> Trace["Traces, spans, metrics"]
-  API --> Store[("Local JSON/YAML/JSONL/HTML")]
+  Runner --> Trace["Runs, results,<br/>traces, spans, metrics"]
+  API --> Store[("Local project artifacts")]
+  Runner --> Store
+  API --> Reports["Markdown / HTML reports"]
+  Reports --> Store
 ```
 
-The browser calls same-origin `/api/backend/*`. The Next.js route handler adds `AGENTOPS_API_TOKEN` from its server environment and forwards to the backend configured by `AGENTOPS_API_BASE_INTERNAL`. The token is never compiled into a `NEXT_PUBLIC_*` variable.
+The browser calls `/api/backend/*` on the Next.js app. That server-side route adds the scoped backend token from `AGENTOPS_API_TOKEN`; it is not exposed as a `NEXT_PUBLIC_*` browser variable. The FastAPI backend owns artifact reads and writes.
 
-## Identity and authorization
+## Tech stack
 
-For a local workbench, a full identity provider would add operational weight without demonstrating the core evaluation system. The implemented boundary therefore uses rotation-ready scoped service tokens:
+| Layer | Implementation |
+| --- | --- |
+| Operator experience | Next.js App Router, TypeScript, Tailwind CSS, Recharts |
+| Control plane | FastAPI and Python |
+| Evaluation runtime | Provider abstraction, rule evaluators, optional OpenAI judge evaluator |
+| Evidence store | Local YAML, JSONL, JSON, Markdown, and HTML artifacts |
+| Verification | Pytest, Ruff, mypy, TypeScript, Playwright, mock-only CI |
 
-1. Generate a high-entropy secret.
-2. Store only its SHA-256 digest in `API_TOKENS` as `token_id:role:digest`.
-3. Present `Authorization: Bearer token_id.secret`.
-4. Rotate by adding a new record, updating clients, then removing the old record.
+## Quick start: run the offline demo
 
-Roles are `viewer`, `reviewer`, `operator`, and `admin`. All roles can read; reviewer can create/update review annotations; operator can run and mutate evaluation resources; destructive deletes require admin. Authentication compares digests in constant time and returns generic 401/403 responses.
-
-Generate a record without printing the secret into repository files:
-
-```bash
-python3 -c 'import hashlib,secrets; s=secrets.token_urlsafe(32); print("secret:",s); print("record: local-operator:operator:"+hashlib.sha256(s.encode()).hexdigest())'
-```
-
-Put the record in backend `API_TOKENS`; put `local-operator.<secret>` in the frontend server's `AGENTOPS_API_TOKEN`. Treat both environment files as secrets. Multiple comma-separated records support zero-downtime rotation.
-
-## Threat model
-
-| Threat | Control | Residual risk |
-| --- | --- | --- |
-| Token disclosure to browser code | Same-origin server proxy and server-only environment variable | A compromised Next.js server can access its token |
-| Plaintext credential theft from backend config | Backend stores token IDs, roles, and SHA-256 digests only | Weak secrets remain brute-forceable; generate high entropy |
-| Over-privileged automation | Route-level role policy and admin-only deletes | Tokens are service identities, not per-human attribution |
-| Brute force or request floods | Constant-time verification and bounded per-token windows | In-memory limits are per process, not distributed |
-| Oversized/chunked bodies | Header precheck plus measured body cap | Reverse-proxy limits should provide an outer boundary |
-| Path traversal | Identifier validation and storage-root containment | Filesystem and parser edge cases remain test targets |
-| Stored script injection | Report generation escapes untrusted content | Future renderers must preserve escaping |
-| Surprise API spend | Mock default, explicit OpenAI mode, case/output caps | Provider estimates are not authoritative billing data |
-
-See [docs/security-threat-model.md](docs/security-threat-model.md) for the full trust-boundary inventory.
-
-## Quickstart: secure local mode
-
-Prerequisites: Python 3.11+, Node.js 22+, and a Chromium installation for browser tests.
+**Prerequisites:** Python 3.11+, Node.js 22+, and Chromium if you will run browser tests.
 
 ```bash
 cp .env.example .env
-# Generate a token secret and API_TOKENS record using the command above.
 make backend-install
 make frontend-install
 make seed-demo
 ```
 
-Backend environment:
+For the safest local setup, create a scoped token record and use the secret only in the frontend server environment:
 
-```env
-APP_ENV=local
-API_TOKENS=local-operator:operator:<sha256-digest>
-LLM_PROVIDER=mock
+```bash
+python3 -c 'import hashlib,secrets; s=secrets.token_urlsafe(32); print("secret:",s); print("record: local-operator:operator:"+hashlib.sha256(s.encode()).hexdigest())'
 ```
 
-Frontend server environment:
+In the root `.env`, keep `LLM_PROVIDER=mock` and set `API_TOKENS` to the printed record. Before starting the frontend, export its server-only settings in that terminal:
 
-```env
-AGENTOPS_API_BASE_INTERNAL=http://127.0.0.1:8000
-AGENTOPS_API_TOKEN=local-operator.<secret>
+```bash
+export AGENTOPS_API_BASE_INTERNAL=http://127.0.0.1:8000
+export AGENTOPS_API_TOKEN=local-operator.<secret>
 ```
 
-Run `make backend-dev` and `make frontend-dev` in separate terminals, then open `http://127.0.0.1:3000`.
+Start the services in separate terminals, then open <http://127.0.0.1:3000>:
 
-`ALLOW_INSECURE_LOCAL_DEMO=true` is a deliberate, localhost-only convenience and is rejected outside `APP_ENV=local`. It should not be used for shared machines or network binding.
+```bash
+make backend-dev
+```
 
-## Mock provider and cost discipline
+```bash
+make frontend-dev
+```
 
-Mock mode is deterministic, offline, and sufficient for the dashboard, tests, reports, and CI. It incurs no provider cost. OpenAI mode is opt-in through `OPENAI_API_KEY` plus an explicit run request. Keep case counts and `OPENAI_MAX_OUTPUT_TOKENS` bounded; leave judge evaluation disabled unless needed. Token and cost figures are estimates for comparison, not billing evidence.
+For a short-lived, loopback-only visual demo, `ALLOW_INSECURE_LOCAL_DEMO=true` is available only when `APP_ENV=local`. It is not suitable for shared machines or network binding.
 
-## Testing and quality gates
+## Operator walkthrough
+
+Use the seeded **Demo AgentOps Quality Studio** to follow the loop:
+
+1. Open the project and inspect its prompt versions and datasets.
+2. Start a mock evaluation; mock mode is deterministic and has no network or API cost.
+3. Open the latest run to review case outcomes, aggregate metrics, and trace links.
+4. Use **Compare**, **Observability**, and **Failures** to identify the meaningful change rather than relying only on an aggregate score.
+5. Apply the quality gate, leave a review annotation, then open **Reports** for the generated Markdown/HTML evidence.
+
+![Observability view: trace volume, success, latency, and estimated cost](docs/assets/observability.png)
+
+## Product decisions and trade-offs
+
+| Decision | Benefit | Deliberate limit |
+| --- | --- | --- |
+| Local, inspectable artifacts instead of a managed data plane | Evidence travels with the project and is easy to inspect or diff. | No transactional concurrency or database-grade access control; use one writer process unless storage is redesigned. |
+| Mock provider as the normal dev/CI path | Reproducible, offline, zero-cost verification. | It is not a proxy for live-model quality. |
+| OpenAI is explicit and bounded | Enables targeted live experiments without making paid calls the default. | Token and cost values are estimates, not provider billing records. |
+| Gates plus human review | Makes release policy visible and reviewable. | The system does not auto-promote high-impact AI changes. |
+
+## Proof you can reproduce
+
+The repository keeps the verification path executable rather than claiming a benchmark result in the README:
 
 ```bash
 make backend-lint
@@ -119,20 +152,15 @@ make quality-gate
 make report
 ```
 
-Backend security tests cover fail-closed authentication, malformed registries, role restrictions, rotation-compatible multiple tokens, request ceilings, rate limits, and sanitized health output. Playwright exercises desktop and mobile UI flows through the credential-hiding proxy. CI uses only the mock provider and read-only GitHub permissions. Passing these gates validates repository behavior under test; it does not certify internet-facing production readiness.
+`make verify` runs the integrated local path, including seeding, evals, browser testing, and the quality gate. CI uses the mock provider and read-only GitHub permissions. A passing suite validates the behavior under test; it does not certify an internet-facing production deployment.
 
-## Operations
+## Trust features and operating boundaries
 
-- Bind backend and frontend to loopback for local use. For shared deployment, terminate TLS, use a real secret manager, and add an external IdP or trusted identity-aware proxy.
-- Set `MAX_REQUEST_BYTES`, `RATE_LIMIT_REQUESTS`, and `RATE_LIMIT_WINDOW_SECONDS` below outer reverse-proxy limits.
-- Rotate tokens by overlap; remove the old digest after every client has moved.
-- Back up `data/` if runs and review evidence matter. Writes are local-file operations, so use one writer process unless storage is redesigned.
-- Monitor 401, 403, 413, and 429 responses, failed quality gates, provider errors, and unexpected cost increases.
-- Do not place sensitive production prompts or datasets in this local demo without an appropriate retention and access policy.
+The workbench uses rotation-ready scoped service tokens (`viewer`, `reviewer`, `operator`, and `admin`), SHA-256 digest storage, constant-time verification, bounded request bodies, per-token rate limits, and role-limited destructive operations. The server-side proxy prevents the backend credential being compiled into browser code.
 
-## Storage map
+For any shared deployment, put TLS and a real secret manager in front of it, use an external IdP or trusted identity-aware proxy, back up `data/`, and set outer reverse-proxy limits below the application’s request and rate limits. Do not place sensitive production prompts or datasets in this local demo without an appropriate retention and access policy.
 
-Artifacts live under `data/projects/{project_id}/`: prompt YAML, dataset JSONL, run/result JSON, trace/span JSONL, reviews, reports, and `quality_gates.yaml`. This makes the system transparent and portable, but it does not provide transactional concurrency or database-grade access control.
+See the full [security threat model](docs/security-threat-model.md) and [API/authentication reference](docs/api.md).
 
 ## Documentation
 
@@ -141,13 +169,12 @@ Artifacts live under `data/projects/{project_id}/`: prompt YAML, dataset JSONL, 
 - [Tracing design](docs/tracing-design.md)
 - [Metrics](docs/metrics.md)
 - [Quality gates](docs/quality-gates.md)
-- [API and authentication](docs/api.md)
 - [Local development](docs/local-development.md)
-- [Security threat model](docs/security-threat-model.md)
+- [Demo script](docs/demo-script.md)
 
 ## Non-goals
 
-- Hosted multi-tenant operation or per-user SSO.
-- Authoritative billing, compliance certification, or durable distributed tracing.
+- Hosted multi-tenant operation, per-user SSO, or distributed tracing.
+- Authoritative billing or compliance certification.
 - Automatic production promotion based only on evaluator scores.
 - Replacing human review for high-impact agent changes.
